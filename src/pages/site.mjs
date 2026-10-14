@@ -3,10 +3,10 @@ import { esc, hash, km2, won, shuffle, josa } from '../lib/util.mjs';
 import { title, desc, clampDesc } from '../lib/seo.mjs';
 import * as S from '../lib/schema.mjs';
 import {
-  courseGrid, stepList, factTable, faqBlock, noticeBlock,
-  longtail, summonBand, siteLinks,
+  courseGrid, stepList, stepSet, factTable, faqBlock, noticeBlock,
+  longtail, summonBand, siteLinks, topicLinks, courseTopic, docTopics,
 } from '../lib/blocks.mjs';
-import { SEC } from '../content/copy.mjs';
+import { SEC, ANCHOR, COURSE_ANCHOR, DOC_LINKS } from '../content/copy.mjs';
 import { POSTS } from '../content/posts.mjs';
 
 const at = (h, arr, slot = 0) => arr[parseInt(h.substr((slot * 3) % 29, 3), 16) % arr.length];
@@ -36,19 +36,26 @@ export function homePage(ctx) {
   </dl>
 </section>`;
 
+  /* ★지역 고르기 — 두 칸짜리 이름 목록을 쓰지 않는다. 어두운 바탕에 가는 괘선 표를
+     놓고 시군구·동·곧은 몫을 열로 세워 한눈에 견주게 한다. 이 사이트가 재는 값이
+     그대로 열 하나가 된다. */
+  const allR = [...main, ...sub];
+  const pcts = allR.map((r) => r.straightPct);
+  const plo = Math.min(...pcts) - 3, phi = Math.max(...pcts) + 1;
   const areaBlock = panel('area', 'where', '어느 자리에서 부르시나요',
-    `<div class="twin">
-      <div>
-        <p class="twin-h">동 한 칸까지</p>
-        <ul>${main.map((r) => `<li><a href="/${r.slug}/"><b>${esc(r.name)}</b><span>${r.gu.length}곳 · ${r.spotCount}칸</span></a></li>`).join('\n')}</ul>
-      </div>
-      <div>
-        <p class="twin-h">시군구에서 끊음</p>
-        <ul>${sub.map((r) => `<li><a href="/${r.slug}/"><b>${esc(r.name)}</b><span>시군구 ${r.gu.length}</span></a></li>`).join('\n')}</ul>
-      </div>
-    </div>
-    <p class="panel-f">층이 갈려도 받는 줄과 요금은 하나입니다. <a href="/area/">닿는 범위를 한 장에</a> 펼쳐 두었습니다.</p>`,
-    '층이 둘인 것은 적어 둔 깊이가 다르다는 뜻입니다. 가는 지역을 솎아 낸 것이 아닙니다.', 'I');
+    `<table class="ledger2">
+      <thead><tr><th scope="col">지역</th><th scope="col">시군구</th><th scope="col">쪽을 둔 동</th><th scope="col">곧은 몫</th></tr></thead>
+      <tbody>${allR.map((r) => `<tr${r.main ? ' class="deep"' : ''}>
+        <th scope="row"><a href="/${r.slug}/">${esc(r.name)}</a></th>
+        <td>${r.gu.length}</td>
+        <td>${r.main ? `${r.spotCount}` : '—'}</td>
+        <td><span class="bar" aria-hidden="true"><i style="width:${Math.round(((r.straightPct - plo) / (phi - plo)) * 100)}%"></i></span>${r.straightPct}%</td>
+      </tr>`).join('\n')}</tbody>
+    </table>
+    <p class="ledger2-key">이름 옆에 ▾ 가 붙은 줄은 동까지 쪽이 있는 지역이고, 나머지는 시군구에서 멈춥니다.
+      맨 오른쪽은 그 지역 경계가 자로 그은 선에 얼마나 가까운지입니다. 층이 갈려도 받는 줄과 요금은 하나입니다.
+      <a href="/area/">닿는 범위를 한 장에</a> 펼쳐 두었습니다.</p>`,
+    '층을 둘로 둔 것은 적어 놓은 깊이가 다르다는 뜻입니다. 가는 지역을 솎아 낸 것이 아닙니다.', 'I');
 
   const whyBlock = panel('why', 'method', '왜 동네 경계부터 재나요?',
     `<div class="intro">
@@ -64,11 +71,21 @@ export function homePage(ctx) {
 
   const { html: faqHtml, qa } = faqBlock(seed, baseCtx(cfg, courses, '지금 계신 곳'), 6, 'VI');
 
-  const pool = [];
-  for (const r of regions) {
-    if (r.main) for (const g of r.gu) for (const s of g.spots) pool.push({ label: `${g.name} ${s.name}`, href: `/${r.slug}/${g.slug}/${s.slug}/` });
-    else for (const g of r.gu) pool.push({ label: `${r.name} ${g.name}`, href: `/${r.slug}/${g.slug}/` });
-  }
+  const deep = [];
+  for (const r of regions) if (r.main) for (const g of r.gu) for (const s of g.spots) deep.push({ label: `${g.name} ${s.name}`, href: `/${r.slug}/${g.slug}/${s.slug}/` });
+  const guList = [];
+  for (const r of regions) for (const g of r.gu) guList.push({ label: `${r.name} ${g.name}`, href: `/${r.slug}/${g.slug}/` });
+  const courseAll = courses.map((c) => ({ label: c.ko, href: `/course/${c.slug}/` }));
+  const sidoCourse = [];
+  for (const r of regions) for (const c of courses) sidoCourse.push({ label: `${r.name} ${c.ko}`, href: `/${r.slug}/course/${c.slug}/` });
+  const steps = stepSet(seed);
+  const topics = topicLinks([
+    { label: '코스 이름으로', items: courseAll, anchor: COURSE_ANCHOR },
+    { label: '지역 + 코스로', items: sidoCourse, pick: 14, anchor: COURSE_ANCHOR },
+    { label: '동 이름으로 바로', items: deep, pick: 18, anchor: ANCHOR },
+    { label: '시군구로', items: guList, pick: 16, anchor: ANCHOR },
+    { label: '먼저 읽을 것', items: DOC_LINKS },
+  ], seed, 'VIII', esc(at(h, SEC.topicHead, 8)), esc(at(h, SEC.topicSub, 3)));
 
   const body = [
     hero,
@@ -79,7 +96,7 @@ export function homePage(ctx) {
     postBlock,
     faqHtml,
     noticeBlock(seed, 'VII'),
-    longtail(pool, seed, 30, 'popular', '연락이 잦은 자리', null, 'VIII'),
+    topics,
     summonBand(cfg, '지금 계신 곳', seed),
   ].join('\n');
 
@@ -103,6 +120,7 @@ export function homePage(ctx) {
         }),
         S.itemList(`${siteUrl}/#sidolist`, '받는 시도', regions.map((r) => ({ name: r.name, url: `${siteUrl}/${r.slug}/` }))),
         S.faqPage(`${siteUrl}/`, qa),
+        S.howTo(`${siteUrl}/`, '전화 한 통으로 부르는 다섯 걸음', steps, cfg),
       ],
     }),
   };
@@ -140,8 +158,11 @@ export function areaHub(ctx) {
       pageKind: 'areahub',
       crumbs: [{ name: '처음', url: `${siteUrl}/` }, { name: '닿는 범위', url: `${siteUrl}/area/` }],
       jsonld: [
+        S.collectionPage({ url: `${siteUrl}/area/`, siteUrl, title: title.areaHub(counts), desc: clampDesc(desc.areaHub(counts)), listId: `${siteUrl}/area/#list` }),
         S.itemList(`${siteUrl}/area/#list`, '받는 시도', regions.map((r) => ({ name: r.name, url: `${siteUrl}/${r.slug}/` }))),
+        S.service({ siteUrl, url: `${siteUrl}/area/`, cfg, name: `${cfg.brand.ko} 방문 가능 지역`, desc: clampDesc(desc.areaHub(counts)), areaServed: { '@type': 'Country', name: '대한민국' }, courses }),
         S.faqPage(`${siteUrl}/area/`, qa),
+        S.howTo(`${siteUrl}/area/`, '사시는 자리에서 부르는 다섯 걸음', stepSet(seed), cfg),
       ],
     }),
   };
@@ -187,7 +208,9 @@ export function courseHub(ctx) {
       pageKind: 'coursehub',
       crumbs: [{ name: '처음', url: `${siteUrl}/` }, { name: '코스', url: `${siteUrl}/course/` }],
       jsonld: [
+        S.collectionPage({ url: `${siteUrl}/course/`, siteUrl, title: title.page(`코스 ${courses.length}가지 출장마사지 홈타이`), desc: clampDesc(`코스 ${courses.length}가지를 세기와 길이, 기름 여부로 한 표에 세웠습니다.`), listId: `${siteUrl}/course/#list` }),
         S.itemList(`${siteUrl}/course/#list`, '코스', courses.map((c) => ({ name: c.ko, url: `${siteUrl}/course/${c.slug}/` }))),
+        S.aggregateOffer(`${siteUrl}/course/`, courses, cfg),
         S.faqPage(`${siteUrl}/course/`, qa),
       ],
     }),
@@ -232,7 +255,7 @@ export function pricePage(ctx) {
 
   const { html: faqHtml, qa } = faqBlock(seed, baseCtx(cfg, courses, '사시는 자리'), 4, 'IV');
 
-  const body = [intro, table, noExtra, pay, summonBand(cfg, '요금 확인', seed), faqHtml, siteLinks(ctx, seed)].join('\n');
+  const body = [intro, table, noExtra, pay, summonBand(cfg, '요금 확인', seed), faqHtml, docTopics(ctx, seed, 'XI', esc(at(hash(seed, 'dt'), SEC.topicHead, 8)), esc(at(hash(seed, 'dt'), SEC.topicSub, 3))), siteLinks(ctx, seed)].join('\n');
 
   return {
     path: '/price/',
@@ -244,7 +267,11 @@ export function pricePage(ctx) {
       body,
       pageKind: 'price',
       crumbs: [{ name: '처음', url: `${siteUrl}/` }, { name: '요금', url: `${siteUrl}/price/` }],
-      jsonld: [S.faqPage(`${siteUrl}/price/`, qa)],
+      jsonld: [
+        S.aggregateOffer(`${siteUrl}/price/`, courses, cfg),
+        S.service({ siteUrl, url: `${siteUrl}/price/`, cfg, name: `${cfg.brand.ko} 코스별 요금`, desc: clampDesc(`코스별 기본 길이와 요금입니다. ${won(sorted[0].price)}원부터입니다.`), areaServed: { '@type': 'Country', name: '대한민국' }, courses }),
+        S.faqPage(`${siteUrl}/price/`, qa),
+      ],
     }),
   };
 }
@@ -290,7 +317,7 @@ export function guidePage(ctx) {
 
   const { html: faqHtml, qa } = faqBlock(seed, baseCtx(cfg, courses, '부르시는 곳'), 6, 'V');
 
-  const body = [intro, what, timing, stepList(seed, 'IV'), refuse, summonBand(cfg, '처음 이용', seed), faqHtml, noticeBlock(seed, 'VI'), siteLinks(ctx, seed)].join('\n');
+  const body = [intro, what, timing, stepList(seed, 'IV'), refuse, summonBand(cfg, '처음 이용', seed), faqHtml, noticeBlock(seed, 'VI'), docTopics(ctx, seed, 'XI', esc(at(hash(seed, 'dt'), SEC.topicHead, 8)), esc(at(hash(seed, 'dt'), SEC.topicSub, 3))), siteLinks(ctx, seed)].join('\n');
 
   return {
     path: '/guide/',
@@ -302,7 +329,11 @@ export function guidePage(ctx) {
       body,
       pageKind: 'guide',
       crumbs: [{ name: '처음', url: `${siteUrl}/` }, { name: '이용 전에', url: `${siteUrl}/guide/` }],
-      jsonld: [S.faqPage(`${siteUrl}/guide/`, qa)],
+      jsonld: [
+        S.howTo(`${siteUrl}/guide/`, '처음 부르실 때 거치는 다섯 걸음', stepSet(seed), cfg),
+        S.service({ siteUrl, url: `${siteUrl}/guide/`, cfg, name: `${cfg.brand.ko} 이용 안내`, desc: clampDesc('처음 부르실 때 필요한 것만 추렸습니다.'), areaServed: { '@type': 'Country', name: '대한민국' }, courses }),
+        S.faqPage(`${siteUrl}/guide/`, qa),
+      ],
     }),
   };
 }
@@ -348,7 +379,7 @@ export function companyPage(ctx) {
       ['훑은 꼭짓점', `${counts.vertSum.toLocaleString('ko-KR')}개`],
     ])}`, null, 'II');
 
-  const body = [intro, line, how, summonBand(cfg, '문의', seed), siteLinks(ctx, seed)].join('\n');
+  const body = [intro, line, how, summonBand(cfg, '문의', seed), docTopics(ctx, seed, 'XI', esc(at(hash(seed, 'dt'), SEC.topicHead, 8)), esc(at(hash(seed, 'dt'), SEC.topicSub, 3))), siteLinks(ctx, seed)].join('\n');
 
   return {
     path: '/company/',
@@ -387,6 +418,7 @@ export function termsPage(ctx) {
     `<div class="intro"><p>아래는 ${esc(cfg.brand.ko)} 이용약관 전문입니다. 접수 전화를 거신 시점에 아래 내용에 동의하신 것으로 봅니다.</p></div>`,
     panel('terms', 'terms', '전문', `<div class="clause">${TERMS.map(([t, d]) => `<section><h2>${esc(t)}</h2><p>${esc(d)}</p></section>`).join('')}</div>`, null, 'I'),
     summonBand(cfg, '약관 문의', 'terms'),
+    docTopics(ctx, 'terms', 'XI', esc(at(hash('terms', 'dt'), SEC.topicHead, 8)), esc(at(hash('terms', 'dt'), SEC.topicSub, 3))),
     siteLinks(ctx, 'terms'),
   ].join('\n');
   return {
@@ -421,6 +453,7 @@ export function privacyPage(ctx) {
     `<div class="intro"><p>내용이 짧습니다. 적는 항목 자체가 네 가지뿐이기 때문입니다.</p></div>`,
     panel('pp', 'privacy', '전문', `<div class="clause">${PRIVACY.map(([t, d]) => `<section><h2>${esc(t)}</h2><p>${esc(d)}</p></section>`).join('')}</div>`, null, 'I'),
     summonBand(cfg, '개인정보 문의', 'privacy'),
+    docTopics(ctx, 'privacy', 'XI', esc(at(hash('privacy', 'dt'), SEC.topicHead, 8)), esc(at(hash('privacy', 'dt'), SEC.topicSub, 3))),
     siteLinks(ctx, 'privacy'),
   ].join('\n');
   return {
@@ -447,6 +480,7 @@ export function magazineIndex(ctx) {
       `<ul class="shelfx">${list.map((p) => `<li><a href="/magazine/${p.slug}/"><b>${esc(p.title)}</b><p>${esc(p.summary)}</p><time datetime="${p.date}">${p.date}</time></a></li>`).join('\n')}</ul>`,
       '새 글은 RSS 로도 같이 나갑니다.', 'I'),
     summonBand(cfg, '접수', 'magazine'),
+    docTopics(ctx, 'magazine', 'XI', esc(at(hash('magazine', 'dt'), SEC.topicHead, 8)), esc(at(hash('magazine', 'dt'), SEC.topicSub, 3))),
     siteLinks(ctx, 'magazine'),
   ].join('\n');
   return {
@@ -459,7 +493,10 @@ export function magazineIndex(ctx) {
       body,
       pageKind: 'magazine',
       crumbs: [{ name: '처음', url: `${siteUrl}/` }, { name: '기록', url: `${siteUrl}/magazine/` }],
-      jsonld: [S.itemList(`${siteUrl}/magazine/#list`, '선과 결 기록', list.map((p) => ({ name: p.title, url: `${siteUrl}/magazine/${p.slug}/` })))],
+      jsonld: [
+        S.collectionPage({ url: `${siteUrl}/magazine/`, siteUrl, title: title.page('선과 결 기록'), desc: clampDesc(`부르기 전에 정해 두면 편한 것들을 ${list.length}편으로 적었습니다.`), listId: `${siteUrl}/magazine/#list` }),
+        S.itemList(`${siteUrl}/magazine/#list`, '선과 결 기록', list.map((p) => ({ name: p.title, url: `${siteUrl}/magazine/${p.slug}/` }))),
+      ],
     }),
   };
 }
@@ -483,6 +520,7 @@ export function postPage(ctx, p) {
     panel('more', 'next', '함께 읽을 글',
       `<ul class="shelfx">${others.map((x) => `<li><a href="/magazine/${x.slug}/"><b>${esc(x.title)}</b><p>${esc(x.summary)}</p><time datetime="${x.date}">${x.date}</time></a></li>`).join('\n')}</ul>`,
       null, 'I'),
+    docTopics(ctx, p.slug, 'XI', esc(at(hash(p.slug, 'dt'), SEC.topicHead, 8)), esc(at(hash(p.slug, 'dt'), SEC.topicSub, 3))),
     siteLinks(ctx, p.slug),
   ].join('\n');
 

@@ -85,6 +85,7 @@ main{max-width:var(--w);margin:0 auto;padding:20px 20px 60px}
 .panel-h{margin:0 0 18px;border-bottom:1px solid var(--line);padding-bottom:13px;position:relative}
 .panel-h::after{content:"";position:absolute;left:0;right:0;bottom:-4px;height:1px;background:var(--line);opacity:.55}
 .panel-no{display:block;margin:0 0 8px;font-family:var(--mono);font-size:10px;letter-spacing:.26em;color:var(--brass);text-transform:uppercase}
+.panel-no::before{content:attr(data-eyebrow)}
 .panel h2{margin:0;font-size:19px;font-weight:700;letter-spacing:-.015em;line-height:1.4}
 @media (min-width:720px){.panel h2{font-size:21px}}
 .panel-sb{margin:10px 0 0;font-size:13.5px;color:var(--dim)}
@@ -191,6 +192,33 @@ main{max-width:var(--w);margin:0 auto;padding:20px 20px 60px}
 .twin a:hover{color:var(--accDk);text-decoration:none}
 .twin b{font-size:15px;font-weight:600}
 .twin span{font-size:11px;color:var(--dim);font-family:var(--mono)}
+
+/* ── 지역 괘선 표(지역 고르기) ─────────────────────
+   ★두 칸짜리 이름 목록을 쓰지 않는다. 어두운 바탕에 가는 괘선 표를 놓고
+     시군구·동·곧은 몫을 열로 세워 한눈에 견주게 한다. */
+.ledger2{width:100%;border-collapse:collapse;font-size:14.5px}
+.ledger2 thead th{font-size:11px;font-weight:600;color:var(--brass);letter-spacing:.08em;
+  text-align:left;padding:0 10px 9px 0;border-bottom:1px solid var(--brass)}
+.ledger2 tbody th{text-align:left;font-weight:700;padding:11px 10px 11px 0;border-bottom:1px solid var(--line)}
+.ledger2 td{padding:11px 10px 11px 0;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12.5px;color:var(--dim);white-space:nowrap}
+.ledger2 tbody tr:hover th,.ledger2 tbody tr:hover td{background:var(--soft)}
+.ledger2 tbody th a{color:var(--ink)}
+.ledger2 tbody tr:hover th a{color:var(--accDk)}
+.ledger2 .deep th a::after{content:"▾";margin-left:7px;font-size:10px;color:var(--brass)}
+.ledger2 .bar{display:inline-block;width:72px;height:7px;background:var(--soft);vertical-align:middle;margin-right:8px}
+.ledger2 .bar i{display:block;height:100%;background:var(--acc)}
+.ledger2-key{margin:16px 0 0;font-size:12.5px;color:var(--dim)}
+@media (max-width:620px){
+  .ledger2 thead{display:none}
+  .ledger2 tbody th,.ledger2 td{display:block;border:0;padding:2px 0}
+  .ledger2 tbody tr{display:block;padding:11px 0;border-bottom:1px solid var(--line)}
+}
+
+/* ── 주제 묶음 링크 ────────────────────────────────── */
+.topics{display:grid;gap:22px}
+@media (min-width:720px){.topics{grid-template-columns:1fr 1fr}}
+.topic-h{margin:0 0 10px;font-family:var(--mono);font-size:10px;letter-spacing:.22em;color:var(--brass);
+  border-bottom:1px solid var(--line);padding-bottom:7px}
 
 /* ── 글 ────────────────────────────────────────────── */
 .text{max-width:46rem}

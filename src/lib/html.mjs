@@ -186,7 +186,7 @@ function railBar(cfg) {
 export function panel(id, label, h2, inner, sub, n) {
   return `<section class="panel" id="${id}" aria-labelledby="${id}-h">
   <header class="panel-h">
-    <span class="panel-no" aria-hidden="true">${esc(label)}${n ? ` — ${n}` : ''}</span>
+    <span class="panel-no" aria-hidden="true" data-eyebrow="${esc(label)}${n ? ` — ${n}` : ''}"></span>
     <h2 id="${id}-h">${h2}</h2>
     ${sub ? `<p class="panel-sb">${sub}</p>` : ''}
   </header>
